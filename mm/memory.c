@@ -70,6 +70,7 @@
 #include <linux/dax.h>
 #include <linux/frontswap.h>
 #include <linux/delay.h>
+#include <linux/ktime.h>
 
 #include <asm/io.h>
 #include <asm/mmu_context.h>
@@ -4444,21 +4445,23 @@ void ptlock_free(struct page *page)
 }
 #endif
 
-
 static unsigned long shoopus_ma_whoopus __read_mostly = 420;
 
 #ifdef CONFIG_DEBUG_FS
 static int shoopus_ma_whoopus_get(void *data, u64 *val)
 {
-	*val = shoopus_ma_whoopus;
+	// Delay for `shoopus_ma_whoopus` useconds, then return the time taken. 
+	ktime_t start_time = ktime_get();
+	udelay(shoopus_ma_whoopus); 
+	ktime_t end_time = ktime_get(); 
+
+	*val = ktime_to_ns(ktime_sub(start_time - end_time))
 	return 0;
 }
 
 static int shoopus_ma_whoopus_set(void *data, u64 val)
 {
-	if (val == 42)
-		 return -EINVAL; 
-	shoopus_ma_whoopus = val + 1; 
+	shoopus_ma_whoopus = val; 
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(shoopus_ma_whoopus_fops,

@@ -4443,3 +4443,36 @@ void ptlock_free(struct page *page)
 	kmem_cache_free(page_ptl_cachep, page->ptl);
 }
 #endif
+
+
+static unsigned long shoopus_ma_whoopus __read_mostly = 420;
+
+#ifdef CONFIG_DEBUG_FS
+static int shoopus_ma_whoopus_get(void *data, u64 *val)
+{
+	*val = shoopus_ma_whoopus;
+	return 0;
+}
+
+static int shoopus_ma_whoopus_set(void *data, u64 val)
+{
+	if (val == 42)
+		 return -EINVAL; 
+	shoopus_ma_whoopus = val + 1; 
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(shoopus_ma_whoopus_fops,
+		shoopus_ma_whoopus_get, shoopus_ma_whoopus_set, "%llu\n");
+
+static int __init shoopus_ma_whoopus_debugfs(void)
+{
+	void *ret;
+
+	ret = debugfs_create_file("shoopus_ma_whoopus", 0644, NULL, NULL,
+			&shoopus_ma_whoopus_fops);
+	if (!ret)
+		pr_warn("Failed to create shoopus_ma_whoopus in debugfs");
+	return 0;
+}
+late_initcall(shoopus_ma_whoopus_debugfs);
+#endif

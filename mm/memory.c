@@ -4445,37 +4445,40 @@ void ptlock_free(struct page *page)
 }
 #endif
 
-static unsigned long shoopus_ma_whoopus __read_mostly = 420;
+static unsigned long harry_xu __read_mostly = 420;
 
 #ifdef CONFIG_DEBUG_FS
-static int shoopus_ma_whoopus_get(void *data, u64 *val)
+static int harry_xu_get(void *data, u64 *val)
 {
-	// Delay for `shoopus_ma_whoopus` useconds, then return the time taken. 
-	ktime_t start_time = ktime_get();
-	udelay(shoopus_ma_whoopus); 
-	ktime_t end_time = ktime_get(); 
+	ktime_t start_time;
+	ktime_t end_time;
 
-	*val = ktime_to_ns(ktime_sub(start_time - end_time))
+	// Delay for `harry_xu` useconds, then return the time taken. 
+	start_time = ktime_get();
+	udelay(harry_xu); 
+	end_time = ktime_get();
+
+	*val = ktime_to_ns(ktime_sub(start_time, end_time));
 	return 0;
 }
 
-static int shoopus_ma_whoopus_set(void *data, u64 val)
+static int harry_xu_set(void *data, u64 val)
 {
-	shoopus_ma_whoopus = val; 
+	harry_xu = val; 
 	return 0;
 }
-DEFINE_SIMPLE_ATTRIBUTE(shoopus_ma_whoopus_fops,
-		shoopus_ma_whoopus_get, shoopus_ma_whoopus_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(harry_xu_fops,
+		harry_xu_get, harry_xu_set, "%llu\n");
 
-static int __init shoopus_ma_whoopus_debugfs(void)
+static int __init harry_xu_debugfs(void)
 {
 	void *ret;
 
-	ret = debugfs_create_file("shoopus_ma_whoopus", 0644, NULL, NULL,
-			&shoopus_ma_whoopus_fops);
+	ret = debugfs_create_file("harry_xu", 0644, NULL, NULL,
+			&harry_xu_fops);
 	if (!ret)
-		pr_warn("Failed to create shoopus_ma_whoopus in debugfs");
+		pr_warn("Failed to create harry_xu in debugfs");
 	return 0;
 }
-late_initcall(shoopus_ma_whoopus_debugfs);
+late_initcall(harry_xu_debugfs);
 #endif

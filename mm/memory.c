@@ -4458,7 +4458,7 @@ static int harry_xu_get(void *data, u64 *val)
 	udelay(harry_xu); 
 	end_time = ktime_get();
 
-	*val = ktime_to_ns(ktime_sub(start_time, end_time));
+	*val = ktime_to_ns(ktime_sub(end_time, start_time));
 	return 0;
 }
 

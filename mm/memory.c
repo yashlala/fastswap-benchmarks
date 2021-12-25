@@ -2690,6 +2690,7 @@ int do_swap_page(struct vm_fault *vmf)
 	ktime_t start_time, end_time, delta_time; 
 
 	start_time = ktime_get(); 
+	barrier();
 
 	// If there were atomicity errors, die. 
 	if (!pte_unmap_same(vma->vm_mm, vmf->pmd, vmf->pte, vmf->orig_pte))
@@ -2908,6 +2909,7 @@ out_release:
 		put_page(swapcache);
 	}
 out_time: 
+	barrier();
 	end_time = ktime_get(); 
 	delta_time = ktime_sub(end_time, start_time); 
 	if (ret & VM_FAULT_MAJOR) { 

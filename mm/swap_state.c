@@ -74,6 +74,9 @@ unsigned long total_swapcache_pages(void)
 
 static atomic_t swapin_readahead_hits = ATOMIC_INIT(4);
 
+static atomic_t swapin_count = ATOMIC_INIT(0);
+static atomic_t swapin_prefetch_count = ATOMIC_INIT(0);
+
 void show_swap_cache_info(void)
 {
 	printk("%lu pages in swap cache\n", total_swapcache_pages());
@@ -515,9 +518,12 @@ struct page *swapin_readahead(swp_entry_t entry, gfp_t gfp_mask,
 
 	preempt_disable();
 	cpu = smp_processor_id();
+	// Fetch first one synchronously. This func likely checks cache hit/miss.
 	faultpage = read_swap_cache_sync(entry, gfp_mask, vma, addr);
+	atomic_inc(&swapin_count);
 	preempt_enable();
 
+	// Looks like this just tells us what pages to read
 	mask = swapin_nr_pages(offset) - 1;
 	if (!mask)
 		goto skip;
@@ -535,6 +541,7 @@ struct page *swapin_readahead(swp_entry_t entry, gfp_t gfp_mask,
 		/* Ok, do the async read-ahead now */
 		page = read_swap_cache_async(swp_entry(swp_type(entry), offset),
 						gfp_mask, vma, addr);
+		atomic_inc(&swapin_prefetch_count);
 		if (!page)
 			continue;
 
@@ -583,3 +590,68 @@ void exit_swap_address_space(unsigned int type)
 	synchronize_rcu();
 	kvfree(spaces);
 }
+
+#ifdef CONFIG_DEBUG_FS
+
+static int atomic_counter_get(atomic_t *latency, void *data, u64 *val) {
+	*val = atomic_read(latency);
+	return 0;
+
+}
+static int swapin_count_get(void *data, u64 *val)
+{
+	return pagefault_latency_get(&swapin_count, data, val);
+}
+static int swapin_prefetch_count_get(void *data, u64 *val)
+{
+	return pagefault_latency_get(&swapin_prefetch_count, data, val);
+}
+static int swapin_count_set(void *data, u64 val)
+{
+	// Strictly speaking, we should atomically update both of these
+	// values, and guard their read and write with a mutex.
+	// We'll assume this inaccuracy is negligible.
+	atomic_set(&swapin_count, (int) val);
+	atomic_set(&swapin_prefetch_count, (int) val);
+ 	return 0;
+}
+static int swapin_prefetch_count_set(void *data, u64 val)
+{
+	// Strictly speaking, we should atomically update both of these
+	// values, and guard their read and write with a mutex.
+	// We'll assume this inaccuracy is negligible.
+	atomic_set(&swapin_count, (int) val);
+	atomic_set(&swapin_prefetch_count, (int) val);
+ 	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(swapin_count_fops,
+		swapin_count_get, swapin_count_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(swapin_prefetch_count_fops,
+		swapin_prefetch_count_get, swapin_prefetch_count_set, "%llu\n");
+
+static int __init swapin_count_debugfs(void)
+{
+	void *ret;
+
+	ret = debugfs_create_file("swapin_count", 0644, NULL, NULL,
+			&swapin_count_fops);
+	if (!ret)
+		pr_warn("Failed to create swapin_count in debugfs");
+	return 0;
+}
+late_initcall(swapin_count_debugfs);
+
+static int __init swapin_prefetch_count_debugfs(void)
+{
+	void *ret;
+
+	ret = debugfs_create_file("swapin_prefetch_count", 0644, NULL, NULL,
+			&swapin_prefetch_count_fops);
+	if (!ret)
+		pr_warn("Failed to create swapin_prefetch_count in debugfs");
+	return 0;
+}
+late_initcall(swapin_prefetch_count_debugfs);
+
+#endif

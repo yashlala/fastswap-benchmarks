@@ -20,6 +20,7 @@
 #include <linux/vmalloc.h>
 #include <linux/swap_slots.h>
 #include <linux/frontswap.h>
+#include <linux/debugfs.h>
 
 #include <asm/pgtable.h>
 
@@ -593,32 +594,21 @@ void exit_swap_address_space(unsigned int type)
 
 #ifdef CONFIG_DEBUG_FS
 
-static int atomic_counter_get(atomic_t *latency, void *data, u64 *val) {
-	*val = atomic_read(latency);
-	return 0;
-
-}
 static int swapin_count_get(void *data, u64 *val)
 {
-	return pagefault_latency_get(&swapin_count, data, val);
+	*val = atomic_read(&swapin_count);
+	return 0;
 }
 static int swapin_prefetch_count_get(void *data, u64 *val)
 {
-	return pagefault_latency_get(&swapin_prefetch_count, data, val);
+	*val = atomic_read(&swapin_prefetch_count);
+	return 0;
 }
-static int swapin_count_set(void *data, u64 val)
+
+static int swapin_counters_set(void *data, u64 val)
 {
 	// Strictly speaking, we should atomically update both of these
-	// values, and guard their read and write with a mutex.
-	// We'll assume this inaccuracy is negligible.
-	atomic_set(&swapin_count, (int) val);
-	atomic_set(&swapin_prefetch_count, (int) val);
- 	return 0;
-}
-static int swapin_prefetch_count_set(void *data, u64 val)
-{
-	// Strictly speaking, we should atomically update both of these
-	// values, and guard their read and write with a mutex.
+	// values, and guard their reads and writes with a mutex.
 	// We'll assume this inaccuracy is negligible.
 	atomic_set(&swapin_count, (int) val);
 	atomic_set(&swapin_prefetch_count, (int) val);
@@ -626,9 +616,9 @@ static int swapin_prefetch_count_set(void *data, u64 val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(swapin_count_fops,
-		swapin_count_get, swapin_count_set, "%llu\n");
+		swapin_count_get, swapin_counters_set, "%llu\n");
 DEFINE_SIMPLE_ATTRIBUTE(swapin_prefetch_count_fops,
-		swapin_prefetch_count_get, swapin_prefetch_count_set, "%llu\n");
+		swapin_prefetch_count_get, swapin_counters_set, "%llu\n");
 
 static int __init swapin_count_debugfs(void)
 {

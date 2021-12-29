@@ -2669,6 +2669,7 @@ EXPORT_SYMBOL(unmap_mapping_range);
 
 static atomic_t major_pagefault_latency = ATOMIC_INIT(0); 
 static atomic_t minor_pagefault_latency = ATOMIC_INIT(0); 
+static atomic_t swap_cache_hits = ATOMIC_INIT(0);
 /*
  * We enter with non-exclusive mmap_sem (to exclude vma changes,
  * but allow concurrent faults), and pte mapped but not yet locked.
@@ -2764,8 +2765,8 @@ int do_swap_page(struct vm_fault *vmf)
 		goto out_release;
 	}
 
-	// TODO: What's with the swapcache = page? We're somehow doing the
-	// error handling later? 
+	atomic_inc(&swap_cache_hits);
+
 	swapcache = page;
 	locked = lock_page_or_retry(page, vma->vm_mm, vmf->flags);
 
@@ -4511,20 +4512,17 @@ void ptlock_free(struct page *page)
 
 #ifdef CONFIG_DEBUG_FS
 
-static int pagefault_latency_get(atomic_t *latency, void *data, u64 *val) { 
-	// TODO: Apply Sabrina's patch so we can export a monotonically increasing
-	// struct instead. 
-	*val = atomic_read(latency); 
-	return 0;
-
-}
+// TODO: Apply Sabrina's patch so we can export a
+// monotonically increasing struct val instead.
 static int major_pagefault_latency_get(void *data, u64 *val)
 {
-	return pagefault_latency_get(&major_pagefault_latency, data, val); 
+	*val = atomic_read(&major_pagefault_latency);
+	return 0;
 }
 static int minor_pagefault_latency_get(void *data, u64 *val)
 {
-	return pagefault_latency_get(&minor_pagefault_latency, data, val); 
+	*val = atomic_read(&minor_pagefault_latency);
+	return 0;
 }
 static int major_pagefault_latency_set(void *data, u64 val)
 {
@@ -4566,4 +4564,29 @@ static int __init minor_pagefault_latency_debugfs(void)
 }
 late_initcall(minor_pagefault_latency_debugfs);
 
+
+static int swap_cache_hits_get(void *data, u64 *val)
+{
+	*val = atomic_read(&swap_cache_hits);
+	return 0;
+}
+static int swap_cache_hits_set(void *data, u64 val)
+{
+	atomic_set(&swap_cache_hits, (int) val);
+ 	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(swap_cache_hits_fops,
+		swap_cache_hits_get, swap_cache_hits_set, "%llu\n");
+
+static int __init swap_cache_hits_debugfs(void)
+{
+	void *ret;
+
+	ret = debugfs_create_file("swap_cache_hits", 0644, NULL, NULL,
+			&swap_cache_hits_fops);
+	if (!ret)
+		pr_warn("Failed to create swap_cache_hits in debugfs");
+	return 0;
+}
+late_initcall(swap_cache_hits_debugfs);
 #endif

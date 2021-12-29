@@ -2763,9 +2763,9 @@ int do_swap_page(struct vm_fault *vmf)
 		delayacct_clear_flag(DELAYACCT_PF_SWAPIN);
 		swapcache = page;
 		goto out_release;
+	} else {
+		atomic_inc(&swap_cache_hits);
 	}
-
-	atomic_inc(&swap_cache_hits);
 
 	swapcache = page;
 	locked = lock_page_or_retry(page, vma->vm_mm, vmf->flags);

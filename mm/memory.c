@@ -2690,6 +2690,8 @@ int do_swap_page(struct vm_fault *vmf)
 	int ret = 0;
 	ktime_t start_time, end_time, delta_time; 
 
+	pr_notice("Entering do_swap_page");
+
 	start_time = ktime_get(); 
 	barrier();
 

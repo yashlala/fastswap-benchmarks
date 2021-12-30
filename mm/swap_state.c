@@ -517,6 +517,8 @@ struct page *swapin_readahead(swp_entry_t entry, gfp_t gfp_mask,
 	unsigned long mask;
 	int cpu;
 
+	pr_notice("Entering swapin_readahead");
+
 	preempt_disable();
 	cpu = smp_processor_id();
 	// Fetch first one synchronously. This func likely checks cache hit/miss.
